@@ -109,6 +109,9 @@ export class EditorView {
   // Update the editor's `state` prop, without touching any of the
   // other props.
   updateState(state) {
+    // if(state.selection.$anchor.pos === 25){
+    //   debugger
+    // }
     this.updateStateInner(state, this.state.plugins != state.plugins)
   }
 

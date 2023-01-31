@@ -7,6 +7,9 @@ function compareObjs(a, b) {
 
 class WidgetType {
   constructor(toDOM, spec) {
+    // if (!spec.side || Math.abs(spec.side) %10 !== 0){
+    //   debugger
+    // }
     this.spec = spec || noSpec
     this.side = this.spec.side || 0
     this.toDOM = toDOM

@@ -275,6 +275,7 @@ export function posAtCoords(view, coords) {
       pos = posFromCaret(view, node, offset, coords)
   }
   if (pos == null) pos = posFromElement(view, elt, coords)
+  console.log('_posFromElement_', coords, pos)
 
   let desc = view.docView.nearestDesc(elt, true)
   return {pos, inside: desc ? desc.posAtStart - desc.border : -1}

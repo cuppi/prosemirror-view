@@ -37,6 +37,7 @@ export class DOMObserver {
     this.flushingSoon = -1
     this.observer = window.MutationObserver &&
       new window.MutationObserver(mutations => {
+        console.log('_DOMObserver trigger mutation observer_')
         for (let i = 0; i < mutations.length; i++) this.queue.push(mutations[i])
         // IE11 will sometimes (on backspacing out a single character
         // text node after a BR node) call the observer callback
@@ -119,6 +120,7 @@ export class DOMObserver {
       if (sel.focusNode && isEquivalentPosition(sel.focusNode, sel.focusOffset, sel.anchorNode, sel.anchorOffset))
         return this.flushSoon()
     }
+    console.log('_onselection change_');
     this.flush()
   }
 
@@ -127,6 +129,7 @@ export class DOMObserver {
   }
 
   ignoreSelectionChange(sel) {
+    console.log('_ignoreSelectionChange_')
     if (sel.rangeCount == 0) return true
     let container = sel.getRangeAt(0).commonAncestorContainer
     let desc = this.view.docView.nearestDesc(container)
@@ -137,6 +140,7 @@ export class DOMObserver {
   }
 
   flush() {
+    console.log('_flush_')
     if (!this.view.docView || this.flushingSoon > -1) return
     let mutations = this.observer ? this.observer.takeRecords() : []
     if (this.queue.length) {
@@ -174,6 +178,10 @@ export class DOMObserver {
         checkCSS(this.view)
       }
       this.handleDOMChange(from, to, typeOver, added)
+      // const {anchorNode, anchorOffset, focusNode, focusOffset } = this.currentSelection;
+      // console.log('check curent selection');
+      // console.log(anchorNode, anchorOffset, focusNode, focusOffset)
+      // window.logSelection(sel)
       if (this.view.docView.dirty) this.view.updateState(this.view.state)
       else if (!this.currentSelection.eq(sel)) selectionToDOM(this.view)
     }

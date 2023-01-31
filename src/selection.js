@@ -5,10 +5,16 @@ import {selectionCollapsed, isEquivalentPosition, domIndex, isOnEdge} from "./do
 
 export function selectionFromDOM(view, origin) {
   let domSel = view.root.getSelection(), doc = view.state.doc
+  console.log('_selectionFromDOM start_|1', domSel.anchorNode, domSel.anchorOffset, domSel.focusNode, domSel.focusOffset)
+  // console.log('selectionFromDOM', domSel.anchorNode, domSel.anchorOffset, domSel.focusNode, domSel.focusOffset)
   let nearestDesc = view.docView.nearestDesc(domSel.focusNode), inWidget = nearestDesc && nearestDesc.size == 0
+  // console.log('focus+++++++++++++++++++')
   let head = view.docView.posFromDOM(domSel.focusNode, domSel.focusOffset)
+  console.log('_selectionFromDOM_|1', head)
   let $head = doc.resolve(head), $anchor, selection
+  // console.log('selectionFromDOM', domSel.anchorNode, domSel.anchorOffset, domSel.focusNode, domSel.focusOffset)
   if (selectionCollapsed(domSel)) {
+    console.log('_selectionFromDOM NodeSelection_|1');
     $anchor = $head
     while (nearestDesc && !nearestDesc.node) nearestDesc = nearestDesc.parent
     if (nearestDesc && nearestDesc.node.isAtom && NodeSelection.isSelectable(nearestDesc.node) && nearestDesc.parent
@@ -18,16 +24,27 @@ export function selectionFromDOM(view, origin) {
     }
   } else {
     $anchor = doc.resolve(view.docView.posFromDOM(domSel.anchorNode, domSel.anchorOffset))
+    if (!window.__log1__){
+      // const sel = window.getSelection();
+      // console.log('*****', sel.anchorNode, sel.anchorOffset);
+      // if ($anchor.pos === 25){
+      //   window.__log1__ = true;
+      //   console.log('__log1___________________________________________________________', $anchor.pos, domSel.anchorNode, domSel.anchorOffset)
+      // }
+    }
   }
-
+  // console.log('selectionFromDOM2', selection, $anchor, $head)
   if (!selection) {
     let bias = origin == "pointer" || (view.state.selection.head < $head.pos && !inWidget) ? 1 : -1
     selection = selectionBetween(view, $anchor, $head, bias)
   }
+
+  console.log('_selectionFromDOM end_|1')
   return selection
 }
 
 export function selectionToDOM(view, force) {
+  console.log('_selectionToDOM start_|2');
   let sel = view.state.selection
   syncNodeSelection(view, sel)
 
@@ -60,6 +77,7 @@ export function selectionToDOM(view, force) {
 
   view.domObserver.setCurSelection()
   view.domObserver.connectSelection()
+  console.log('_selectionToDOM end_|2')
 }
 
 // Kludge to work around Webkit not allowing a selection to start/end

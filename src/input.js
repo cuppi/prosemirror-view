@@ -402,13 +402,16 @@ editHandlers.compositionstart = editHandlers.compositionupdate = view => {
   if (!view.composing) {
     view.domObserver.flush()
     let {state} = view, $pos = state.selection.$from
+    console.log('no composing1', state.selection.empty, $pos.nodeBefore.marks, $pos.nodeBefore.marks.some(m => m.type.spec.inclusive === false));
     if (state.selection.empty &&
         (state.storedMarks || (!$pos.textOffset && $pos.parentOffset && $pos.nodeBefore.marks.some(m => m.type.spec.inclusive === false)))) {
+      console.log('top logic');
       // Need to wrap the cursor in mark nodes different from the ones in the DOM context
       view.markCursor = view.state.storedMarks || $pos.marks()
       endComposition(view, true)
       view.markCursor = null
     } else {
+      console.log('bottom logic');
       endComposition(view)
       // In firefox, if the cursor is after but outside a marked node,
       // the inserted text won't inherit the marks. So this moves it
@@ -452,7 +455,8 @@ export function endComposition(view, forceUpdate) {
   while (view.compositionNodes.length > 0) view.compositionNodes.pop().markParentsDirty()
   if (forceUpdate || view.docView.dirty) {
     let sel = selectionFromDOM(view)
-    if (!sel.eq(view.state.selection)) view.dispatch(view.state.tr.setSelection(sel))
+    console.log(sel.eq(view.state.selection))
+    if (!sel.eq(view.state.selection) && false) view.dispatch(view.state.tr.setSelection(sel))
     else view.updateState(view.state)
     return true
   }

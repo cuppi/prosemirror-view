@@ -170,6 +170,7 @@ class ViewDesc {
 
   // : (dom.Node, number, ?number) → number
   localPosFromDOM(dom, offset, bias) {
+    console.log('_localPosFromDOM start_', dom, this)
     // If the DOM position is in the content, use the child desc after
     // it to figure out a position.
     if (this.contentDOM && this.contentDOM.contains(dom.nodeType == 1 ? dom : dom.parentNode)) {
@@ -200,7 +201,7 @@ class ViewDesc {
     // start or at the end of this view desc.
     let atEnd
     if (this.contentDOM && this.contentDOM != this.dom && this.dom.contains(this.contentDOM)) {
-      atEnd = dom.compareDocumentPosition(this.contentDOM) & 2
+      atEnd = (dom.compareDocumentPosition(this.contentDOM) & 2)
     } else if (this.dom.firstChild) {
       if (offset == 0) for (let search = dom;; search = search.parentNode) {
         if (search == this.dom) { atEnd = false; break }
@@ -211,6 +212,7 @@ class ViewDesc {
         if (search.parentNode.lastChild != search) break
       }
     }
+    console.log('_localPosFromDOM_', atEnd, bias, dom, offset, (atEnd == null ? bias > 0 : atEnd) ? this.posAtEnd : this.posAtStart)
     return (atEnd == null ? bias > 0 : atEnd) ? this.posAtEnd : this.posAtStart
   }
 
@@ -236,6 +238,7 @@ class ViewDesc {
   }
 
   posFromDOM(dom, offset, bias) {
+    console.log('_posFromDOM_', dom)
     for (let scan = dom;; scan = scan.parentNode) {
       let desc = this.getDesc(scan)
       if (desc) return desc.localPosFromDOM(dom, offset, bias)
@@ -259,9 +262,11 @@ class ViewDesc {
 
   // : (number) → {node: dom.Node, offset: number}
   domFromPos(pos) {
+    console.log('_domFromPos_', this, pos);
     if (!this.contentDOM) return {node: this.dom, offset: 0}
     for (let offset = 0, i = 0;; i++) {
       if (offset == pos) {
+        // beforePosition是为了处理widge类型Deco的type为负数的情况，其他情况默认返回false，后面的条件为了确定widget的dom不是在
         while (i < this.children.length && (this.children[i].beforePosition || this.children[i].dom.parentNode != this.contentDOM)) i++
         return {node: this.contentDOM,
                 offset: i == this.children.length ? this.contentDOM.childNodes.length : domIndex(this.children[i].dom)}
@@ -339,16 +344,22 @@ class ViewDesc {
   // a selection starts in such a node and ends in another, in which
   // case we just use whatever domFromPos produces as a best effort.
   setSelection(anchor, head, root, force) {
+    console.log('_setSelection start_|25')
     // If the selection falls entirely in a child, give it to that child
     let from = Math.min(anchor, head), to = Math.max(anchor, head)
     for (let i = 0, offset = 0; i < this.children.length; i++) {
       let child = this.children[i], end = offset + child.size
-      if (from > offset && to < end)
-        return child.setSelection(anchor - offset - child.border, head - offset - child.border, root, force)
+      if (from > offset && to < end){
+        console.log('_setSelection loop_|25')
+        const res = child.setSelection(anchor - offset - child.border, head - offset - child.border, root, force)
+        console.log('_setSelection end_|25')
+        return res
+      }
       offset = end
     }
 
     let anchorDOM = this.domFromPos(anchor), headDOM = this.domFromPos(head)
+    console.log('_setSelection_|25', anchorDOM, headDOM)
     let domSel = root.getSelection()
 
     if (!force &&
@@ -365,6 +376,8 @@ class ViewDesc {
       try {
         if (anchor != head) domSel.extend(headDOM.node, headDOM.offset)
         domSelExtended = true
+        // console.log('setSelection2', anchor, head, anchorDOM.node, anchorDOM.offset, domSel.anchorNode, domSel.anchorOffset)
+        // console.log('????', head, headDOM.node, headDOM.offset);
       } catch (err) {
         // In some cases with Chrome the selection is empty after calling
         // collapse, even when it should be valid. This appears to be a bug, but
@@ -381,6 +394,7 @@ class ViewDesc {
       domSel.removeAllRanges()
       domSel.addRange(range)
     }
+    console.log('_setSelection end_|25')
   }
 
   // : (dom.MutationRecord) → bool
@@ -649,7 +663,16 @@ class NodeViewDesc extends ViewDesc {
     })
     // Drop all remaining descs after the current position.
     updater.syncToMarks(nothing, inline, view)
-    if (this.node.isTextblock) updater.addTextblockHacks()
+    if (this.node.isTextblock) {
+      updater.addTextblockHacks()
+    }
+    // if (this.node.type.name === 'table'){
+    //   updater.addBlockHacks()
+    // }
+    // if (this.node.type.name === 'table'){
+    //   console.log('updateChildren', this.node.type.name);
+    //   updater.addTextblockHacks(true)
+    // }
     updater.destroyRest()
 
     // Sync the DOM if anything changed
@@ -701,6 +724,7 @@ class NodeViewDesc extends ViewDesc {
 
     // Patch up this.children to contain the composition view
     this.children = replaceNodes(this.children, pos, pos + text.length, view, desc)
+    console.log(this.children)
   }
 
   // : (Node, [Decoration], DecorationSet, EditorView) → bool
@@ -786,6 +810,7 @@ class TextViewDesc extends NodeViewDesc {
   }
 
   localPosFromDOM(dom, offset, bias) {
+    console.log('_TextViewDesc_', dom);
     if (dom == this.nodeDOM) return this.posAtStart + Math.min(offset, this.node.text.length)
     return super.localPosFromDOM(dom, offset, bias)
   }
@@ -866,6 +891,7 @@ class CustomNodeViewDesc extends NodeViewDesc {
 // because this should sync the subtree for a whole node at a time.
 function renderDescs(parentDOM, descs) {
   let dom = parentDOM.firstChild
+  // console.log('renderDescs', descs, parentDOM)
   for (let i = 0; i < descs.length; i++) {
     let desc = descs[i], childDOM = desc.dom
     if (childDOM.parentNode == parentDOM) {
@@ -1136,7 +1162,7 @@ class ViewTreeUpdater {
     let lastChild = this.top.children[this.index - 1]
     while (lastChild instanceof MarkViewDesc) lastChild = lastChild.children[lastChild.children.length - 1]
 
-    if (!lastChild || // Empty textblock
+    if ( !lastChild || // Empty textblock
         !(lastChild instanceof TextViewDesc) ||
         /\n$/.test(lastChild.node.text)) {
       if (this.index < this.top.children.length && this.top.children[this.index].matchesHack()) {
@@ -1148,6 +1174,23 @@ class ViewTreeUpdater {
       }
     }
   }
+
+  // addBlockHacks() {
+  //   let lastChild = this.top.children[this.index - 1]
+  //   while (lastChild instanceof MarkViewDesc) lastChild = lastChild.children[lastChild.children.length - 1]
+  //
+  //   if (!lastChild || // Empty textblock
+  //       !(lastChild instanceof TextViewDesc) ||
+  //       /\n$/.test(lastChild.node.text)) {
+  //     if (this.index < this.top.children.length && this.top.children[this.index].matchesHack()) {
+  //       this.index++
+  //     } else {
+  //       let dom = document.createElement("br")
+  //       this.top.children.splice(this.index++, 0, new BRHackViewDesc(this.top, nothing, dom, null))
+  //       this.changed = true
+  //     }
+  //   }
+  // }
 }
 
 // : (Fragment, [ViewDesc]) → [ViewDesc]
